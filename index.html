@@ -14,11 +14,7 @@
             --text-muted: #64748b;    
             --border: #e2e8f0;        
             --accent-cts: #0284c7;    
-            --success: #0df2a1;
-            
-            --prio-high: #ef4444;     
-            --prio-med: #f59e0b;      
-            --prio-low: #64748b;      
+            --success: #15803d;
         }
 
         body {
@@ -84,24 +80,20 @@
             margin-bottom: 20px;
         }
 
-        /* Tabla Filtrada */
+        /* Tabla de Gestión CTS */
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; }
         th { padding: 12px 14px; background-color: #f1f5f9; color: var(--text-main); border-bottom: 2px solid var(--border); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
         td { padding: 14px; border-bottom: 1px solid var(--border); color: var(--text-main); line-height: 1.6; vertical-align: top; }
         tr:hover { background-color: #f8fafc; }
 
-        /* Badges de Gestión */
+        /* Badges de Estado */
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
-        .prio-alta { background-color: #fee2e2; color: var(--prio-high); }
-        .prio-media { background-color: #fef3c7; color: var(--prio-med); }
-        .prio-baja { background-color: #f1f5f9; color: var(--prio-low); }
-        
-        .status-completo { background-color: #dcfce7; color: #15803d; }
+        .status-completo { background-color: #dcfce7; color: var(--success); }
         .status-proceso { background-color: #e0f2fe; color: #0369a1; }
         .status-pendiente { background-color: #f1f5f9; color: #475569; }
 
-        /* Notificaciones Dinámicas */
+        /* Notificaciones Semanales */
         .week-selector { margin-bottom: 16px; }
         .week-selector select {
             width: 100%;
@@ -123,12 +115,12 @@
             border: 1px solid var(--border);
             font-size: 13px;
             line-height: 1.6;
-            max-height: 520px;
+            max-height: 540px;
             overflow-y: auto;
         }
         .notification-body h3 { margin-top: 0; font-size: 14px; color: var(--accent-cts); border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
         .notification-body ul { margin: 0; padding-left: 18px; }
-        .notification-body li { margin-bottom: 8px; color: #334155; }
+        .notification-body li { margin-bottom: 10px; color: #334155; }
         .notification-body strong { color: var(--text-main); }
 
         .pdf-btn {
@@ -166,11 +158,12 @@
             <p>III Encuentro Nacional Ciencia, Tecnología y Sociedad 2026</p>
         </div>
         <div class="search-container">
-            <input type="text" id="globalSearch" onkeyup="filterActivitiesTable()" placeholder="Buscar actividades o meses...">
+            <input type="text" id="globalSearch" onkeyup="filterActivitiesTable()" placeholder="Buscar actividades o plazos...">
         </div>
     </header>
 
     <div class="dashboard-grid">
+        <!-- CRONOGRAMA DE ACTIVIDADES EN RANGO DE FECHAS -->
         <div class="main-pane">
             <div class="card">
                 <h2>Cronograma Estratégico de Gestión</h2>
@@ -180,6 +173,7 @@
             </div>
         </div>
 
+        <!-- BARRA LATERAL DINÁMICA DE AYUDA MEMORIA -->
         <div class="sidebar-pane">
             <div class="card">
                 <h2>Ayuda Memoria & Acuerdos</h2>
@@ -203,24 +197,28 @@
 </div>
 
 <script>
-    // Configuración explícita y sanitizada con el nombre real de tu repositorio
+    // Configuración absoluta adaptada al nombre exacto de tu repositorio
     const githubUser = "szarate88"; 
     const csvSourceActivities = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/activities.csv`;
     const csvSourceNotifications = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/notificaciones.csv`;
 
     let globalNotificationsCache = {};
 
-    // 1. PROCESADOR DE NOTIFICACIONES (CSV)
+    // 1. PROCESADOR DE NOTIFICACIONES SEMANALES (CSV)
     Papa.parse(csvSourceNotifications, {
         download: true,
         header: true,
         skipEmptyLines: true,
+        relaxed: true, // Blindaje contra comas internas en los textos largos
         complete: function(results) {
             const data = results.data;
             const dropdown = document.getElementById("weekDropdown");
             let optionsHTML = "";
 
-            data.forEach((row) => {
+            // Invertimos las filas para que la junta más reciente se ubique al inicio del select
+            const cronoData = [...data].reverse();
+
+            cronoData.forEach((row) => {
                 if (row.Semana && row.Titulo && row.Acuerdos) {
                     const id = row.Semana.trim();
                     globalNotificationsCache[id] = {
@@ -235,14 +233,15 @@
             renderSelectedSummary();
         },
         error: function() {
-            // Respaldo relativo si trabajas en local
+            // Respaldo local para entornos de desarrollo en disco
             Papa.parse("data/notificaciones.csv", {
-                download: true, header: true, skipEmptyLines: true,
+                download: true, header: true, skipEmptyLines: true, relaxed: true,
                 complete: function(results) {
                     const data = results.data;
                     const dropdown = document.getElementById("weekDropdown");
                     let optionsHTML = "";
-                    data.forEach(row => {
+                    const cronoData = [...data].reverse();
+                    cronoData.forEach(row => {
                         if (row.Semana && row.Titulo && row.Acuerdos) {
                             const id = row.Semana.trim();
                             globalNotificationsCache[id] = {
@@ -281,35 +280,31 @@
         window.print();
     }
 
-    // 2. RENDERIZADOR DE LA MATRIZ DE ACTIVIDADES
+    // 2. RENDERIZADOR EXCLUSIVO DEL CRONOGRAMA DE ACTIVIDADES (3 COLUMNAS)
     function generateCleanTableHTML(data) {
         if (!data || data.length === 0) return '<p style="color: var(--text-muted);">Sin registros en el cronograma.</p>';
 
-        const allowedHeaders = ["Mes", "Tarea Crítica", "Prioridad", "Estado"];
+        const targetHeaders = ["Fecha", "Tarea Crítica", "Estado"];
         let tableHtml = '<table><thead><tr>';
-        allowedHeaders.forEach(header => tableHtml += `<th>${header}</th>`);
+        targetHeaders.forEach(header => tableHtml += `<th>${header}</th>`);
         tableHtml += '</tr></thead><tbody id="table-rows-target">';
 
         data.forEach(row => {
-            if (row["Mes"] || row["Tarea Crítica a Monitorear"] || row["Tarea Crítica"]) {
+            // Unificamos alias de columnas para máxima tolerancia de carga
+            let dateVal = row["Fecha"] || row["Mes"] || '';
+            let taskVal = row["Tarea Crítica"] || row["Tarea Crítica a Monitorear"] || '';
+            let stateVal = row["Estado"] || row["Estado ( )"] || 'Pendiente';
+
+            if (dateVal || taskVal) {
                 tableHtml += '<tr>';
-                tableHtml += `<td><strong>${row["Mes"] || ''}</strong></td>`;
+                tableHtml += `<td><strong>${dateVal}</strong></td>`;
+                tableHtml += `<td>${taskVal}</td>`;
                 
-                let taskText = row["Tarea Crítica"] || row["Tarea Crítica a Monitorear"] || '';
-                tableHtml += `<td>${taskText}</td>`;
-                
-                let prio = row["Prioridad"] ? row["Prioridad"].trim() : "Media";
-                let prioClass = "prio-media";
-                if (prio.toLowerCase() === 'alta') prioClass = "prio-alta";
-                if (prio.toLowerCase() === 'baja') prioClass = "prio-baja";
-                tableHtml += `<td><span class="badge ${prioClass}">${prio}</span></td>`;
-                
-                let estado = row["Estado"] || row["Estado ( )"] || 'Pendiente';
                 let stateClass = "status-pendiente";
-                if (estado.toLowerCase() === 'completo') stateClass = "status-completo";
-                if (estado.toLowerCase() === 'en proceso') stateClass = "status-proceso";
-                tableHtml += `<td><span class="badge ${stateClass}">${estado}</span></td>`;
+                if (stateVal.toLowerCase() === 'completo') stateClass = "status-completo";
+                if (stateVal.toLowerCase() === 'en proceso') stateClass = "status-proceso";
                 
+                tableHtml += `<td><span class="badge ${stateClass}">${stateVal}</span></td>`;
                 tableHtml += '</tr>';
             }
         });
@@ -324,7 +319,7 @@
         rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(val) ? "" : "none");
     }
 
-    // Carga paralela de actividades
+    // Carga paralela de la matriz de hitos operativos
     Papa.parse(csvSourceActivities, {
         download: true, header: true, skipEmptyLines: true,
         complete: function(r) { 
