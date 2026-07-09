@@ -180,13 +180,11 @@
             </div>
         </div>
 
-        <!-- BARRA LATERAL AUTOMATIZADA CON CSV -->
         <div class="sidebar-pane">
             <div class="card">
                 <h2>Ayuda Memoria & Acuerdos</h2>
                 
                 <div class="week-selector">
-                    <!-- El menú se llena de manera 100% autónoma por JavaScript -->
                     <select id="weekDropdown" onchange="renderSelectedSummary()"></select>
                 </div>
 
@@ -205,15 +203,14 @@
 </div>
 
 <script>
-    // Repositorio central de datos en la nube
+    // Configuración explícita y sanitizada con el nombre real de tu repositorio
     const githubUser = "szarate88"; 
-    const csvSourceActivities = `https://raw.githubusercontent.com/${githubUser}/red-cts-peru/main/data/activities.csv`;
-    const csvSourceNotifications = `https://raw.githubusercontent.com/${githubUser}/red-cts-peru/main/data/notificaciones.csv`;
+    const csvSourceActivities = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/activities.csv`;
+    const csvSourceNotifications = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/notificaciones.csv`;
 
-    // Diccionario dinámico donde mapearemos el contenido del CSV de reuniones
     let globalNotificationsCache = {};
 
-    // 1. CARGA Y PROCESAMIENTO AUTOMÁTICO DE NOTIFICACIONES (WHATSAPP/MINUTAS)
+    // 1. PROCESADOR DE NOTIFICACIONES (CSV)
     Papa.parse(csvSourceNotifications, {
         download: true,
         header: true,
@@ -223,26 +220,22 @@
             const dropdown = document.getElementById("weekDropdown");
             let optionsHTML = "";
 
-            data.forEach((row, index) => {
+            data.forEach((row) => {
                 if (row.Semana && row.Titulo && row.Acuerdos) {
                     const id = row.Semana.trim();
-                    // Guardamos la información desglosando los puntos separados por punto y coma (;)
                     globalNotificationsCache[id] = {
                         title: row.Titulo.trim(),
                         items: row.Acuerdos.split(';').map(item => item.trim()).filter(item => item !== "")
                     };
-
-                    // Insertamos la opción en el menú desplegable de manera orgánica
                     optionsHTML += `<option value="${id}">${row.Titulo.trim()}</option>`;
                 }
             });
 
             dropdown.innerHTML = optionsHTML;
-            // Desplegar la primera fila (la reunión más reciente del documento) por defecto
             renderSelectedSummary();
         },
         error: function() {
-            // Intento de rescate local en contingencias de desarrollo offline
+            // Respaldo relativo si trabajas en local
             Papa.parse("data/notificaciones.csv", {
                 download: true, header: true, skipEmptyLines: true,
                 complete: function(results) {
@@ -288,7 +281,7 @@
         window.print();
     }
 
-    // 2. RENDERIZADOR SELECTIVO DE LA MATRIZ DE ACTIVIDADES
+    // 2. RENDERIZADOR DE LA MATRIZ DE ACTIVIDADES
     function generateCleanTableHTML(data) {
         if (!data || data.length === 0) return '<p style="color: var(--text-muted);">Sin registros en el cronograma.</p>';
 
@@ -331,7 +324,7 @@
         rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(val) ? "" : "none");
     }
 
-    // Carga paralela del cronograma maestro
+    // Carga paralela de actividades
     Papa.parse(csvSourceActivities, {
         download: true, header: true, skipEmptyLines: true,
         complete: function(r) { 
