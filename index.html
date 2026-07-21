@@ -14,7 +14,14 @@
             --text-muted: #64748b;    
             --border: #e2e8f0;        
             --accent-cts: #0284c7;    
-            --success: #15803d;
+            
+            /* Colores de Estado Vivos */
+            --status-complete-bg: #dcfce7;
+            --status-complete-text: #15803d;
+            --status-process-bg: #e0f2fe;
+            --status-process-text: #0369a1;
+            --status-pending-bg: #fef3c7;
+            --status-pending-text: #b45309;
         }
 
         body {
@@ -87,11 +94,19 @@
         td { padding: 14px; border-bottom: 1px solid var(--border); color: var(--text-main); line-height: 1.6; vertical-align: top; }
         tr:hover { background-color: #f8fafc; }
 
-        /* Badges de Estado */
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
-        .status-completo { background-color: #dcfce7; color: var(--success); }
-        .status-proceso { background-color: #e0f2fe; color: #0369a1; }
-        .status-pendiente { background-color: #f1f5f9; color: #475569; }
+        /* Badges de Estado Vivos y Alta Visibilidad */
+        .badge { 
+            display: inline-block; 
+            padding: 5px 10px; 
+            border-radius: 6px; 
+            font-size: 11px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.03em;
+        }
+        .status-completo { background-color: var(--status-complete-bg); color: var(--status-complete-text); border: 1px solid #bbf7d0; }
+        .status-proceso { background-color: var(--status-process-bg); color: var(--status-process-text); border: 1px solid #bae6fd; }
+        .status-pendiente { background-color: var(--status-pending-bg); color: var(--status-pending-text); border: 1px solid #fde68a; }
 
         /* Notificaciones Semanales */
         .week-selector { margin-bottom: 16px; }
@@ -163,7 +178,6 @@
     </header>
 
     <div class="dashboard-grid">
-        <!-- CRONOGRAMA DE ACTIVIDADES EN RANGO DE FECHAS -->
         <div class="main-pane">
             <div class="card">
                 <h2>Cronograma Estratégico de Gestión</h2>
@@ -173,7 +187,6 @@
             </div>
         </div>
 
-        <!-- BARRA LATERAL DINÁMICA DE AYUDA MEMORIA -->
         <div class="sidebar-pane">
             <div class="card">
                 <h2>Ayuda Memoria & Acuerdos</h2>
@@ -197,25 +210,21 @@
 </div>
 
 <script>
-    // Configuración absoluta adaptada al nombre exacto de tu repositorio
     const githubUser = "szarate88"; 
     const csvSourceActivities = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/activities.csv`;
     const csvSourceNotifications = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/notificaciones.csv`;
 
     let globalNotificationsCache = {};
 
-    // 1. PROCESADOR DE NOTIFICACIONES SEMANALES (CSV)
     Papa.parse(csvSourceNotifications, {
         download: true,
         header: true,
         skipEmptyLines: true,
-        relaxed: true, // Blindaje contra comas internas en los textos largos
+        relaxed: true,
         complete: function(results) {
             const data = results.data;
             const dropdown = document.getElementById("weekDropdown");
             let optionsHTML = "";
-
-            // Invertimos las filas para que la junta más reciente se ubique al inicio del select
             const cronoData = [...data].reverse();
 
             cronoData.forEach((row) => {
@@ -233,7 +242,6 @@
             renderSelectedSummary();
         },
         error: function() {
-            // Respaldo local para entornos de desarrollo en disco
             Papa.parse("data/notificaciones.csv", {
                 download: true, header: true, skipEmptyLines: true, relaxed: true,
                 complete: function(results) {
@@ -280,7 +288,6 @@
         window.print();
     }
 
-    // 2. RENDERIZADOR EXCLUSIVO DEL CRONOGRAMA DE ACTIVIDADES (3 COLUMNAS)
     function generateCleanTableHTML(data) {
         if (!data || data.length === 0) return '<p style="color: var(--text-muted);">Sin registros en el cronograma.</p>';
 
@@ -290,7 +297,6 @@
         tableHtml += '</tr></thead><tbody id="table-rows-target">';
 
         data.forEach(row => {
-            // Unificamos alias de columnas para máxima tolerancia de carga
             let dateVal = row["Fecha"] || row["Mes"] || '';
             let taskVal = row["Tarea Crítica"] || row["Tarea Crítica a Monitorear"] || '';
             let stateVal = row["Estado"] || row["Estado ( )"] || 'Pendiente';
@@ -301,8 +307,9 @@
                 tableHtml += `<td>${taskVal}</td>`;
                 
                 let stateClass = "status-pendiente";
-                if (stateVal.toLowerCase() === 'completo') stateClass = "status-completo";
-                if (stateVal.toLowerCase() === 'en proceso') stateClass = "status-proceso";
+                let lowerState = stateVal.toLowerCase();
+                if (lowerState === 'completo' || lowerState === 'completado') stateClass = "status-completo";
+                if (lowerState === 'en proceso' || lowerState === 'en progreso') stateClass = "status-proceso";
                 
                 tableHtml += `<td><span class="badge ${stateClass}">${stateVal}</span></td>`;
                 tableHtml += '</tr>';
@@ -319,7 +326,6 @@
         rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(val) ? "" : "none");
     }
 
-    // Carga paralela de la matriz de hitos operativos
     Papa.parse(csvSourceActivities, {
         download: true, header: true, skipEmptyLines: true,
         complete: function(r) { 
