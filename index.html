@@ -1,214 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Red CTS Perú — Panel de Control 🌐</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    
-    <style>
-        :root {
-            --bg-main: #f8fafc;       
-            --bg-card: #ffffff;       
-            --text-main: #0f172a;     
-            --text-muted: #64748b;    
-            --border: #e2e8f0;        
-            --accent-cts: #0284c7;    
-            
-            /* Colores de Estado Vivos */
-            --status-complete-bg: #dcfce7;
-            --status-complete-text: #15803d;
-            --status-process-bg: #e0f2fe;
-            --status-process-text: #0369a1;
-            --status-pending-bg: #fef3c7;
-            --status-pending-text: #b45309;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            margin: 0;
-            padding: 24px;
-            line-height: 1.5;
-        }
-
-        .container { max-width: 1500px; margin: 0 auto; }
-
-        header {
-            background-color: var(--bg-card);
-            padding: 24px 32px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            border: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-
-        header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-main); }
-        header h1 span { color: var(--accent-cts); }
-        header p { margin: 4px 0 0 0; color: var(--text-muted); font-size: 13px; }
-
-        .search-container input {
-            background-color: var(--bg-main);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            width: 300px;
-            outline: none;
-        }
-        .search-container input:focus { border-color: var(--accent-cts); background-color: #ffffff; }
-
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 440px; gap: 24px; }
-
-        .card {
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-            border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-        }
-
-        .card h2 {
-            margin-top: 0;
-            font-size: 14px;
-            color: var(--text-main);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid var(--text-main);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-
-        /* Tabla de Gestión CTS */
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; }
-        th { padding: 12px 14px; background-color: #f1f5f9; color: var(--text-main); border-bottom: 2px solid var(--border); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
-        td { padding: 14px; border-bottom: 1px solid var(--border); color: var(--text-main); line-height: 1.6; vertical-align: top; }
-        tr:hover { background-color: #f8fafc; }
-
-        /* Badges de Estado Vivos y Alta Visibilidad */
-        .badge { 
-            display: inline-block; 
-            padding: 5px 10px; 
-            border-radius: 6px; 
-            font-size: 11px; 
-            font-weight: 700; 
-            text-transform: uppercase; 
-            letter-spacing: 0.03em;
-        }
-        .status-completo { background-color: var(--status-complete-bg); color: var(--status-complete-text); border: 1px solid #bbf7d0; }
-        .status-proceso { background-color: var(--status-process-bg); color: var(--status-process-text); border: 1px solid #bae6fd; }
-        .status-pendiente { background-color: var(--status-pending-bg); color: var(--status-pending-text); border: 1px solid #fde68a; }
-
-        /* Notificaciones Semanales */
-        .week-selector { margin-bottom: 16px; }
-        .week-selector select {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            font-size: 13.5px;
-            font-weight: 500;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .notification-body {
-            background-color: var(--bg-main);
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            font-size: 13px;
-            line-height: 1.6;
-            max-height: 540px;
-            overflow-y: auto;
-        }
-        .notification-body h3 { margin-top: 0; font-size: 14px; color: var(--accent-cts); border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
-        .notification-body ul { margin: 0; padding-left: 18px; }
-        .notification-body li { margin-bottom: 10px; color: #334155; }
-        .notification-body strong { color: var(--text-main); }
-
-        .pdf-btn {
-            width: 100%;
-            background-color: var(--text-main);
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12.5px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 14px;
-            transition: background-color 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .pdf-btn:hover { background-color: var(--accent-cts); }
-
-        @media print {
-            body * { display: none !important; }
-            #print-area-target, #print-area-target * { display: block !important; }
-            #print-area-target { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; font-family: sans-serif; color: #000; background: #fff; }
-            #print-area-target h3 { font-size: 18px; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 6px; }
-            #print-area-target li { margin-bottom: 10px; font-size: 14px; }
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <div>
-            <h1>RED STS PERÚ <span>• CONTROL DE ACTIVIDADES 🌐</span></h1>
-            <p>III Encuentro Nacional Ciencia, Tecnología y Sociedad 2026</p>
-        </div>
-        <div class="search-container">
-            <input type="text" id="globalSearch" onkeyup="filterActivitiesTable()" placeholder="Buscar actividades o plazos...">
-        </div>
-    </header>
-
-    <div class="dashboard-grid">
-        <div class="main-pane">
-            <div class="card">
-                <h2>Cronograma Estratégico de Gestión</h2>
-                <div class="table-wrapper" id="activities-table-container">
-                    <p style="color: var(--text-muted); font-size: 13.5px;">Cargando matriz de actividades claras...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="sidebar-pane">
-            <div class="card">
-                <h2>Ayuda Memoria & Acuerdos</h2>
-                
-                <div class="week-selector">
-                    <select id="weekDropdown" onchange="renderSelectedSummary()"></select>
-                </div>
-
-                <div id="print-area-target" class="notification-body">
-                    <div id="summary-content-box">
-                        <p style="color: var(--text-muted);">Sincronizando notificaciones...</p>
-                    </div>
-                </div>
-
-                <button class="pdf-btn" onclick="downloadSummaryPDF()">
-                    📄 Descargar Resumen Semanal en PDF
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
     const githubUser = "szarate88"; 
     const csvSourceActivities = `https://raw.githubusercontent.com/${githubUser}/redctsperu-dashboard/main/data/activities.csv`;
@@ -216,6 +5,7 @@
 
     let globalNotificationsCache = {};
 
+    // 1. PROCESADOR SANITIZADO DE NOTIFICACIONES (ORDEN CRONOLÓGICO DE ARRIBA A ABAJO)
     Papa.parse(csvSourceNotifications, {
         download: true,
         header: true,
@@ -225,17 +15,21 @@
             const data = results.data;
             const dropdown = document.getElementById("weekDropdown");
             let optionsHTML = "";
-            const cronoData = [...data].reverse();
 
-            cronoData.forEach((row) => {
-                if (row.Semana && row.Titulo && row.Acuerdos) {
-                    const id = row.Semana.trim();
-                    globalNotificationsCache[id] = {
-                        title: row.Titulo.trim(),
-                        items: row.Acuerdos.split(';').map(item => item.trim()).filter(item => item !== "")
-                    };
-                    optionsHTML += `<option value="${id}">${row.Titulo.trim()}</option>`;
-                }
+            // Filtramos únicamente filas con datos válidos
+            const validRows = data.filter(row => row.Semana && row.Titulo && row.Acuerdos);
+
+            // Al estar el CSV ordenado con w14 (13 de Julio) arriba del todo, iteramos directamente en orden natural
+            validRows.forEach((row) => {
+                const id = row.Semana.trim();
+                const title = row.Titulo.trim();
+                const agreements = row.Acuerdos.trim();
+
+                globalNotificationsCache[id] = {
+                    title: title,
+                    items: agreements.split(';').map(item => item.trim()).filter(item => item !== "")
+                };
+                optionsHTML += `<option value="${id}">${title}</option>`;
             });
 
             dropdown.innerHTML = optionsHTML;
@@ -248,16 +42,14 @@
                     const data = results.data;
                     const dropdown = document.getElementById("weekDropdown");
                     let optionsHTML = "";
-                    const cronoData = [...data].reverse();
-                    cronoData.forEach(row => {
-                        if (row.Semana && row.Titulo && row.Acuerdos) {
-                            const id = row.Semana.trim();
-                            globalNotificationsCache[id] = {
-                                title: row.Titulo.trim(),
-                                items: row.Acuerdos.split(';').map(item => item.trim())
-                            };
-                            optionsHTML += `<option value="${id}">${row.Titulo.trim()}</option>`;
-                        }
+                    const validRows = data.filter(row => row.Semana && row.Titulo && row.Acuerdos);
+                    validRows.forEach(row => {
+                        const id = row.Semana.trim();
+                        globalNotificationsCache[id] = {
+                            title: row.Titulo.trim(),
+                            items: row.Acuerdos.split(';').map(item => item.trim()).filter(item => item !== "")
+                        };
+                        optionsHTML += `<option value="${id}">${row.Titulo.trim()}</option>`;
                     });
                     dropdown.innerHTML = optionsHTML;
                     renderSelectedSummary();
@@ -288,6 +80,7 @@
         window.print();
     }
 
+    // 2. RENDERIZADOR DEL CRONOGRAMA DE ACTIVIDADES (3 COLUMNAS)
     function generateCleanTableHTML(data) {
         if (!data || data.length === 0) return '<p style="color: var(--text-muted);">Sin registros en el cronograma.</p>';
 
@@ -341,6 +134,3 @@
         }
     });
 </script>
-
-</body>
-</html>
